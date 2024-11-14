@@ -4,13 +4,7 @@
 % Digital Image Processing - SIUE
 
 % Input image
-img = imread('cricket.png');
-
-% Check if the image is RGB (3D array)
-if size(img, 3) == 3
-    % Convert to grayscale if needed
-    img = rgb2gray(img);
-end
+img = imread('crop_caesar1.jpg');
 
 % Convert to uint16 
 img = im2uint16(img);
@@ -25,7 +19,7 @@ scaled_image = scale_image(img, scaling_factor);
 sharpened_image = sharpen_image(img, laplacian_kernal);
 % --WIENER FILTER--
 % TODO:
-wiener_filtered_image = wiener_filter(img);
+%wiener_filtered_image = wiener_filter(img);
 
 % TODO:
 % ** Gather image metrics here for experiments **
@@ -35,5 +29,5 @@ figure;
 subplot(1, 4, 1), imshow(img, []), title('Original Image (Grayscale)');
 subplot(1, 4, 2), imshow(scaled_image, []), title(['Scaled Image (Factor: ' num2str(scaling_factor) ')']);
 subplot(1, 4, 3), imshow(sharpened_image, []), title('Sharpened Image');
-subplot(1, 4, 4), imshow(wiener_filtered_image, []), title('Wiener Fitler Image');
+%subplot(1, 4, 4), imshow(wiener_filtered_image, []), title('Wiener Fitler Image');
 
