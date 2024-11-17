@@ -4,7 +4,7 @@
 % Digital Image Processing - SIUE
 
 % Input image
-img = imread('crop_caesar1.jpg');
+img = imread('cricket.png');
 
 % Convert to uint16 
 img = im2uint16(img);
@@ -21,8 +21,9 @@ sharpened_image = sharpen_image(img, laplacian_kernal);
 % TODO:
 %wiener_filtered_image = wiener_filter(img);
 
-% TODO:
-% ** Gather image metrics here for experiments **
+% --Gather image metrics here for experiments--
+get_statistics(img,scaled_image)
+
 
 % Display original, scaled, sharpened, wienered images 
 figure;
