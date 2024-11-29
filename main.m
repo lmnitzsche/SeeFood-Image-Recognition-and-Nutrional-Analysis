@@ -18,8 +18,7 @@ scaled_image = scale_image(img, scaling_factor);
 % --SHARPEN--
 sharpened_image = sharpen_image(img, laplacian_kernal);
 % --WIENER FILTER--
-% TODO:
-%wiener_filtered_image = wiener_filter(img);
+wiener_filtered_image = wiener_filter(img,1); %REPLACE IMG WITH THE BLURRED VERSION OF IMAGE AND REPLACE '1' WITH THE SIGMA VALUE THAT THE BLURRED IMAGE USES
 
 % --Gather image metrics here for experiments--
 get_statistics(img,scaled_image)
@@ -30,5 +29,4 @@ figure;
 subplot(1, 4, 1), imshow(img, []), title('Original Image (Grayscale)');
 subplot(1, 4, 2), imshow(scaled_image, []), title(['Scaled Image (Factor: ' num2str(scaling_factor) ')']);
 subplot(1, 4, 3), imshow(sharpened_image, []), title('Sharpened Image');
-%subplot(1, 4, 4), imshow(wiener_filtered_image, []), title('Wiener Fitler Image');
-
+subplot(1, 4, 4), imshow(wiener_filtered_image, []), title('Wiener Fitler Image');
