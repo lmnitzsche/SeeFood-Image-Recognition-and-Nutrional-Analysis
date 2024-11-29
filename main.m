@@ -21,7 +21,8 @@ sharpened_image = sharpen_image(img, laplacian_kernal);
 wiener_filtered_image = wiener_filter(img,1); %REPLACE IMG WITH THE BLURRED VERSION OF IMAGE AND REPLACE '1' WITH THE SIGMA VALUE THAT THE BLURRED IMAGE USES
 
 % --Gather image metrics here for experiments--
-get_statistics(img,scaled_image)
+calculateEME(img,scaled_image);
+calculateEME(img,wiener_filtered_image);
 
 
 % Display original, scaled, sharpened, wienered images 

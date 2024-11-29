@@ -1,23 +1,3 @@
-function get_statistics(original, processed)
-    mse = calculateMSE(original, processed);
-    eme = calculateEME(original, processed);
-
-    % Print results
-    fprintf('Statistics:\n');
-    fprintf('Mean Squared Error (MSE): %.2f\n', mse);
-    fprintf('Measure of Enhancement (EME): %.2f\n', eme);
-end
-
-
-function mse = calculateMSE(original, enhanced) 
-    % Get squared differences 
-    difference = double(original) - double(enhanced);
-    squaredDifference = difference .^ 2;
-
-    % Calculate the MSE
-    mse = mean(squaredDifference(:));
-end
-
 function eme = calculateEME(original, enhanced)
     % original: original image
     % enhanced: enhanced image 
