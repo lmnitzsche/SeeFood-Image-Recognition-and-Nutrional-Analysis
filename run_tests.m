@@ -58,13 +58,21 @@ for i = 1:length(topLevelFolders)
                 eme = round(calculateEME(img,sharpened_image),4);
                 fprintf(fileID, 'IMG (SHARPENED): %s | EME: %.4f\n', baseName, eme);
             else
+                [folderPath, fileName, ext] = fileparts(imagePath);
+                parentFolder = fileparts(folderPath);
+                originalFolder = fullfile(parentFolder, 'Original');
+                originalImagePath = fullfile(originalFolder, [fileName, ext]);
+                img = imread(originalImagePath);
                 % The folder is not "Original", attempt to extract "SigmaX"
                 sigmaMatch = regexp(secondFolderName, 'Sigma(\d+)$', 'tokens');
                 if ~isempty(sigmaMatch)
                     sigma = str2double(sigmaMatch{1}{1});
+                    blurred_img = imread(imagePath);
+                    eme = round(calculateEME(img, blurred_img),4);
+                    fprintf(fileID, 'IMG (BLURRED-SIG-%d): %s | EME: %.4f \n', sigma, baseName, eme);
                     wiener_img = wiener_filter(img,sigma);
-                    eme = round(calculateEME(img, wiener_img),4);
-                    mse = round(calculateMSE(img, wiener_img),4);
+                    eme = round(calculateEME(blurred_img, wiener_img),4);
+                    mse = round(calculateMSE(blurred_img, wiener_img),4);
                     fprintf(fileID, 'IMG (WIENER-SIG-%d): %s | EME: %.4f | MSE: %.4f\n', sigma, baseName, eme, mse);
                 else
                     sigma = NaN;
