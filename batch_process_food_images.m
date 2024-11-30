@@ -5,7 +5,9 @@
 
 % Dataset directory and categories
 datasetDir = 'ExampleFoodImageDataset';
-categories = {'sushi', 'sashimi', 'pizza', 'hot_dog', 'hamburger', ...
+
+% DONE: 'sushi', 'sashimi', 'pizza',
+categories = {'hot_dog', 'hamburger', ...
               'greek_salad', 'french_fries', 'caprese_salad', 'caesar_salad'};
 
 % Parameters for enhancement
