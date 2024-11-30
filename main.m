@@ -31,3 +31,8 @@ subplot(1, 4, 1), imshow(img, []), title('Original Image (Grayscale)');
 subplot(1, 4, 2), imshow(scaled_image, []), title(['Scaled Image (Factor: ' num2str(scaling_factor) ')']);
 subplot(1, 4, 3), imshow(sharpened_image, []), title('Sharpened Image');
 subplot(1, 4, 4), imshow(wiener_filtered_image, []), title('Wiener Fitler Image');
+
+% Save the processed images as .jpg
+imwrite(im2uint8(mat2gray(scaled_image)), 'scaled_image.jpg'); % Save scaled image
+imwrite(im2uint8(mat2gray(sharpened_image)), 'sharpened_image.jpg'); % Save sharpened image
+imwrite(im2uint8(mat2gray(wiener_filtered_image)), 'wiener_filtered_image.jpg'); % Save Wiener filtered image
