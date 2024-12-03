@@ -20,7 +20,7 @@ scaled_image = scale_image(img, scaling_factor);
 sharpened_image = sharpen_image(img, laplacian_kernal);
 
 % --WIENER FILTER--
-wiener_filtered_image = wiener_filter(img, 1); % Replace IMG with the blurred version of the image and replace '1' with the sigma value that the blurred image uses
+wiener_filtered_image = wiener_filter(img, 5); % Replace IMG with the blurred version of the image and replace '1' with the sigma value that the blurred image uses
 
 % --Gather image metrics here for experiments--
 calculateEME(img, scaled_image);

@@ -34,7 +34,7 @@ for i = 1:length(categories)
         img = im2uint16(img);
 
         % --WIENER FILTER--
-        wiener_filtered_image = wiener_filter(img, 3); % Apply Wiener filter with sigma = 3
+        wiener_filtered_image = wiener_filter(img, 5); % Apply Wiener filter with sigma = 1,3,5,etc
 
         % Save processed image
         [~, originalTitle, ~] = fileparts(imageFile);
