@@ -1,7 +1,7 @@
-% Logan Nitzsche, Tom O'Connell, Sumitra Shrestha, Caleb Sutton,
+% Logan Nitzsche
 % RGB
 % See Food
-% Digital Image Processing - SIUE
+% Digital Image Processing/Computer Vision - SIUE
 
 % Dataset directory and categories
 datasetDir = 'ExampleFoodImageDataset';
@@ -51,7 +51,7 @@ for i = 1:length(categories)
         sharpened_image = sharpen_image(img, laplacian_kernal);
 
         % --WIENER FILTER--
-        wiener_filtered_image = wiener_filter(img, 1); % Replace IMG with the blurred version and '1' with sigma value
+        wiener_filtered_image = wiener_filter(img, 3); % Replace IMG with the blurred version and '3' with sigma value
 
         % Save processed images
         [~, originalTitle, ~] = fileparts(imageFile);
