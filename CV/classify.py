@@ -174,13 +174,16 @@ def extract_features(model, dataloader):
     return np.vstack(features), np.array(labels)
 
 # Function to plot confusion matrices
-def plot_confusion_matrix(cm, labels, title):
+def plot_confusion_matrix(cm, labels, title, fname=None):
     plt.figure(figsize=(8,6))
     sns.heatmap(cm, annot=True, fmt='d', xticklabels=labels, yticklabels=labels, cmap='Blues')
     plt.title(title)
     plt.ylabel('True Label')
     plt.xlabel('Predicted Label')
-    plt.show()
+    if fname:
+        plt.savefig(fname)
+    else:
+        plt.show()
 
 
 
@@ -192,42 +195,50 @@ def main():
     if (len(sys.argv) != 2):
         print("Usage: python classify.py <data.csv>")
         sys.exit(1)
+    
+    script_dir = os.path.dirname(os.path.abspath(__file__))
 
-    # Load your DataFrame
+    # Load DataFrame
     input_filename = sys.argv[1]
     df = pd.read_csv(input_filename)  # Replace with your actual file path
+    
+    # Create figures and results directories
+    figures_dir = os.path.join(script_dir, 'figures', os.path.splitext(os.path.basename(input_filename))[0])
+    results_dir = figures_dir = os.path.join(script_dir, 'results')
+    os.makedirs(figures_dir, exist_ok=True)
+    os.makedirs(results_dir, exist_ok=True)
 
-    # Display basic information
+    # Display basic info
     print(df.head())
     print(df['label'].value_counts())
 
     # Split the DataFrame into training and validation sets
     train_df, val_df = train_test_split(df, test_size=0.2, stratify=df['label'], random_state=42) 
 
-    # Define transforms
+    # Define transforms for train and validation
     train_transforms = transforms.Compose([
         transforms.Resize((224, 224)),
         transforms.RandomHorizontalFlip(),
         transforms.ToTensor(),
     ])
-
     val_transforms = transforms.Compose([
         transforms.Resize((224, 224)),
         transforms.ToTensor(),
     ])
 
-    # Create datasets
+    # Create dataset objects
     train_dataset = FoodDataset(train_df, transform=train_transforms)
     val_dataset = FoodDataset(val_df, transform=val_transforms)
 
-    # Create dataloaders
+    # Create dataloader objects
     train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True, num_workers=4)
     val_loader = DataLoader(val_dataset, batch_size=32, shuffle=False, num_workers=4)
 
-    # Initialize the model, criterion, optimizer
+
+    ## Simple CNN Model
+    # Initialize the SimpleCNN model, criterion, optimizer
     num_classes = len(train_dataset.labels)
     simple_cnn_model = SimpleCNN(num_classes=num_classes)
-
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(simple_cnn_model.parameters(), lr=0.001)
 
@@ -241,7 +252,8 @@ def main():
     print("Classification Report:")
     print(simple_cnn_report, flush=True)
 
-    # Transfer Learning with ResNet50
+
+    ## Transfer Learning with ResNet50
     resnet50_model = models.resnet50(weights=models.ResNet50_Weights.DEFAULT)
 
     # Freeze the convolutional layers
@@ -268,7 +280,8 @@ def main():
     print("Classification Report:")
     print(resnet50_report)
 
-    # Feature extractor model
+
+    ## Feature extractor model
     feature_extractor = models.resnet50(pretrained=True)
     # Remove the last classification layer
     feature_extractor = nn.Sequential(*list(feature_extractor.children())[:-1])  # Remove last fc layer
@@ -279,7 +292,7 @@ def main():
     train_features, train_labels = extract_features(feature_extractor, train_loader)
     val_features, val_labels = extract_features(feature_extractor, val_loader)
 
-    # SVM classifier
+    ## SVM classifier
     from sklearn.preprocessing import StandardScaler
     from sklearn.pipeline import make_pipeline
 
@@ -300,7 +313,7 @@ def main():
     print("Classification Report:")
     print(svm_report)
 
-    # Random Forest classifier
+    ## Random Forest classifier
     rf_classifier = RandomForestClassifier(n_estimators=100, random_state=42)
 
     print("\nTraining Random Forest Classifier...", flush=True)
@@ -334,16 +347,16 @@ def main():
     plt.ylabel('Accuracy')
     plt.xlabel('Model')
     plt.ylim(0, 1)
-    plt.show()
+    plt.savefig(os.path.join(figures_dir, os.path.splitext(os.path.basename(input_filename))[0]+'_accuracies.png'))
 
     # Plot confusion matrices
-    plot_confusion_matrix(simple_cnn_cm, train_dataset.labels, 'SimpleCNN Confusion Matrix')
-    plot_confusion_matrix(resnet50_cm, train_dataset.labels, 'ResNet50 Confusion Matrix')
-    plot_confusion_matrix(svm_cm, train_dataset.labels, 'SVM Confusion Matrix')
-    plot_confusion_matrix(rf_cm, train_dataset.labels, 'Random Forest Confusion Matrix')
+    plot_confusion_matrix(simple_cnn_cm, train_dataset.labels, 'SimpleCNN Confusion Matrix', os.path.join(figures_dir, os.path.splitext(os.path.basename(input_filename))[0]+'_simple_cnn_cm.png'))
+    plot_confusion_matrix(resnet50_cm, train_dataset.labels, 'ResNet50 Confusion Matrix', os.path.join(figures_dir, os.path.splitext(os.path.basename(input_filename))[0]+'_resnet50_cm.png'))
+    plot_confusion_matrix(svm_cm, train_dataset.labels, 'SVM Confusion Matrix', os.path.join(figures_dir, os.path.splitext(os.path.basename(input_filename))[0]+'_svm_cm.png'))
+    plot_confusion_matrix(rf_cm, train_dataset.labels, 'Random Forest Confusion Matrix', os.path.join(figures_dir, os.path.splitext(os.path.basename(input_filename))[0]+'_rf_cm.png'))
 
     # Save classification reports
-    with open(os.path.basename(input_filename) + '_classification_reports.txt', 'w') as f:
+    with open(os.path.join(results_dir, os.path.splitext(os.path.basename(input_filename))[0] + '_results.txt'), 'w') as f:
         f.write("SimpleCNN Classification Report:\n")
         f.write(simple_cnn_report)
         f.write("\nResNet50 Classification Report:\n")

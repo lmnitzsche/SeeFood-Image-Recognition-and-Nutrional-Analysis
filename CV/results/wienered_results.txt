@@ -1,0 +1,43 @@
+SimpleCNN Classification Report:
+              precision    recall  f1-score   support
+
+       pizza       0.75      0.95      0.84        59
+     sashimi       1.00      0.12      0.22         8
+       sushi       0.60      0.38      0.46        24
+
+    accuracy                           0.73        91
+   macro avg       0.78      0.48      0.51        91
+weighted avg       0.73      0.73      0.68        91
+
+ResNet50 Classification Report:
+              precision    recall  f1-score   support
+
+       pizza       0.97      0.95      0.96        59
+     sashimi       1.00      0.12      0.22         8
+       sushi       0.72      0.96      0.82        24
+
+    accuracy                           0.88        91
+   macro avg       0.89      0.68      0.67        91
+weighted avg       0.90      0.88      0.86        91
+
+SVM Classification Report:
+              precision    recall  f1-score   support
+
+       pizza       0.98      0.98      0.98        59
+     sashimi       0.67      0.75      0.71         8
+       sushi       0.87      0.83      0.85        24
+
+    accuracy                           0.92        91
+   macro avg       0.84      0.86      0.85        91
+weighted avg       0.93      0.92      0.92        91
+
+Random Forest Classification Report:
+              precision    recall  f1-score   support
+
+       pizza       0.91      0.98      0.94        59
+     sashimi       1.00      0.12      0.22         8
+       sushi       0.77      0.83      0.80        24
+
+    accuracy                           0.87        91
+   macro avg       0.89      0.65      0.66        91
+weighted avg       0.88      0.87      0.84        91
