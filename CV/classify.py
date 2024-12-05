@@ -2,6 +2,7 @@
 import pandas as pd
 import numpy as np
 from PIL import Image
+import sys
 import os
 
 # PyTorch imports
@@ -21,15 +22,8 @@ from sklearn.ensemble import RandomForestClassifier
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-# Load your DataFrame
-df = pd.read_csv('data.csv')  # Replace with your actual file path
-
-# Display basic information
-print(df.head())
-print(df['label'].value_counts())
-
-# Split the DataFrame into training and validation sets
-train_df, val_df = train_test_split(df, test_size=0.2, stratify=df['label'], random_state=42)
+# Device configuration
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Custom Dataset Class
 class FoodDataset(Dataset):
@@ -52,27 +46,7 @@ class FoodDataset(Dataset):
         label_idx = self.label_to_idx[label]
         return image, label_idx
 
-# Define transforms
-train_transforms = transforms.Compose([
-    transforms.Resize((224, 224)),
-    transforms.RandomHorizontalFlip(),
-    transforms.ToTensor(),
-])
-
-val_transforms = transforms.Compose([
-    transforms.Resize((224, 224)),
-    transforms.ToTensor(),
-])
-
-# Create datasets
-train_dataset = FoodDataset(train_df, transform=train_transforms)
-val_dataset = FoodDataset(val_df, transform=val_transforms)
-
-# Create dataloaders
-train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True, num_workers=4)
-val_loader = DataLoader(val_dataset, batch_size=32, shuffle=False, num_workers=4)
-
-# Define a simple CNN architecture
+# Simple CNN architecture
 class SimpleCNN(nn.Module):
     def __init__(self, num_classes=9):
         super(SimpleCNN, self).__init__()
@@ -100,8 +74,25 @@ class SimpleCNN(nn.Module):
         x = self.classifier(x)
         return x
 
-# Device configuration
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+# Evaluation function
+def evaluate_model(model, dataloader, dataset):
+    model.eval()
+    all_preds = []
+    all_labels = []
+    with torch.no_grad():
+        for images, labels in dataloader:
+            images = images.to(device)
+            labels = labels.to(device)
+            
+            outputs = model(images)
+            _, preds = torch.max(outputs, 1)
+            
+            all_preds.extend(preds.cpu().numpy())
+            all_labels.extend(labels.cpu().numpy())
+    acc = accuracy_score(all_labels, all_preds)
+    report = classification_report(all_labels, all_preds, target_names=dataset.labels)
+    cm = confusion_matrix(all_labels, all_preds)
+    return acc, report, cm
 
 # Training function
 def train_model(model, criterion, optimizer, train_loader, val_loader, num_epochs=10):
@@ -132,7 +123,7 @@ def train_model(model, criterion, optimizer, train_loader, val_loader, num_epoch
             
             running_loss += loss.item() * images.size(0)
         
-        epoch_loss = running_loss / len(train_dataset)
+        epoch_loss = running_loss / len(train_loader.dataset)
         train_losses.append(epoch_loss)
         
         # Validation phase
@@ -153,7 +144,7 @@ def train_model(model, criterion, optimizer, train_loader, val_loader, num_epoch
                 all_preds.extend(preds.cpu().numpy())
                 all_labels.extend(labels.cpu().numpy())
         
-        val_epoch_loss = val_running_loss / len(val_dataset)
+        val_epoch_loss = val_running_loss / len(val_loader.dataset)
         val_losses.append(val_epoch_loss)
         val_acc = accuracy_score(all_labels, all_preds)
         
@@ -167,70 +158,6 @@ def train_model(model, criterion, optimizer, train_loader, val_loader, num_epoch
     # Load best model weights
     model.load_state_dict(best_model_wts)
     return model, train_losses, val_losses
-
-# Initialize the model, criterion, optimizer
-num_classes = len(train_dataset.labels)
-simple_cnn_model = SimpleCNN(num_classes=num_classes)
-
-criterion = nn.CrossEntropyLoss()
-optimizer = optim.Adam(simple_cnn_model.parameters(), lr=0.001)
-
-# Train the SimpleCNN model
-print("Training SimpleCNN Model")
-simple_cnn_model, train_losses, val_losses = train_model(simple_cnn_model, criterion, optimizer, train_loader, val_loader, num_epochs=10)
-
-# Evaluation function
-def evaluate_model(model, dataloader, dataset):
-    model.eval()
-    all_preds = []
-    all_labels = []
-    with torch.no_grad():
-        for images, labels in dataloader:
-            images = images.to(device)
-            labels = labels.to(device)
-            
-            outputs = model(images)
-            _, preds = torch.max(outputs, 1)
-            
-            all_preds.extend(preds.cpu().numpy())
-            all_labels.extend(labels.cpu().numpy())
-    acc = accuracy_score(all_labels, all_preds)
-    report = classification_report(all_labels, all_preds, target_names=dataset.labels)
-    cm = confusion_matrix(all_labels, all_preds)
-    return acc, report, cm
-
-# Evaluate the SimpleCNN model
-simple_cnn_acc, simple_cnn_report, simple_cnn_cm = evaluate_model(simple_cnn_model, val_loader, val_dataset)
-print("SimpleCNN Validation Accuracy:", simple_cnn_acc)
-print("Classification Report:")
-print(simple_cnn_report)
-
-# Transfer Learning with ResNet50
-resnet50_model = models.resnet50(pretrained=True)
-
-# Freeze the convolutional layers
-for param in resnet50_model.parameters():
-    param.requires_grad = False
-
-# Replace the final fully connected layer
-num_features = resnet50_model.fc.in_features
-resnet50_model.fc = nn.Linear(num_features, num_classes)
-
-resnet50_model = resnet50_model.to(device)
-
-# Only parameters of the final layer are being optimized
-criterion = nn.CrossEntropyLoss()
-optimizer = optim.Adam(resnet50_model.fc.parameters(), lr=0.001)
-
-# Train the ResNet50 model
-print("\nTraining ResNet50 Model with Transfer Learning")
-resnet50_model, resnet50_train_losses, resnet50_val_losses = train_model(resnet50_model, criterion, optimizer, train_loader, val_loader, num_epochs=10)
-
-# Evaluate the ResNet50 model
-resnet50_acc, resnet50_report, resnet50_cm = evaluate_model(resnet50_model, val_loader, val_dataset)
-print("ResNet50 Validation Accuracy:", resnet50_acc)
-print("Classification Report:")
-print(resnet50_report)
 
 # Feature extraction function
 def extract_features(model, dataloader):
@@ -246,74 +173,6 @@ def extract_features(model, dataloader):
             labels.extend(label.numpy())
     return np.vstack(features), np.array(labels)
 
-# Feature extractor model
-feature_extractor = models.resnet50(pretrained=True)
-# Remove the last classification layer
-feature_extractor = nn.Sequential(*list(feature_extractor.children())[:-1])  # Remove last fc layer
-feature_extractor = feature_extractor.to(device)
-
-# Extract features from training and validation sets
-print("\nExtracting features for SVM and Random Forest")
-train_features, train_labels = extract_features(feature_extractor, train_loader)
-val_features, val_labels = extract_features(feature_extractor, val_loader)
-
-# SVM classifier
-from sklearn.preprocessing import StandardScaler
-from sklearn.pipeline import make_pipeline
-
-# Standardize features before feeding into SVM
-svm_classifier = make_pipeline(StandardScaler(), SVC(kernel='linear', probability=True))
-
-print("\nTraining SVM Classifier")
-svm_classifier.fit(train_features, train_labels)
-
-# Predict on validation set
-svm_preds = svm_classifier.predict(val_features)
-
-# Evaluate SVM
-svm_acc = accuracy_score(val_labels, svm_preds)
-svm_report = classification_report(val_labels, svm_preds, target_names=train_dataset.labels)
-svm_cm = confusion_matrix(val_labels, svm_preds)
-print("SVM Validation Accuracy:", svm_acc)
-print("Classification Report:")
-print(svm_report)
-
-# Random Forest classifier
-rf_classifier = RandomForestClassifier(n_estimators=100, random_state=42)
-
-print("\nTraining Random Forest Classifier")
-rf_classifier.fit(train_features, train_labels)
-
-# Predict on validation set
-rf_preds = rf_classifier.predict(val_features)
-
-# Evaluate Random Forest
-rf_acc = accuracy_score(val_labels, rf_preds)
-rf_report = classification_report(val_labels, rf_preds, target_names=train_dataset.labels)
-rf_cm = confusion_matrix(val_labels, rf_preds)
-print("Random Forest Validation Accuracy:", rf_acc)
-print("Classification Report:")
-print(rf_report)
-
-# Collect metrics
-metrics = {
-    'Model': ['SimpleCNN', 'ResNet50', 'SVM', 'Random Forest'],
-    'Accuracy': [simple_cnn_acc, resnet50_acc, svm_acc, rf_acc],
-}
-
-metrics_df = pd.DataFrame(metrics)
-print("\nModel Comparison:")
-print(metrics_df)
-
-# Plot the accuracies
-plt.figure(figsize=(8,6))
-sns.barplot(x='Model', y='Accuracy', data=metrics_df)
-plt.title('Model Accuracies')
-plt.ylabel('Accuracy')
-plt.xlabel('Model')
-plt.ylim(0, 1)
-plt.show()
-
 # Function to plot confusion matrices
 def plot_confusion_matrix(cm, labels, title):
     plt.figure(figsize=(8,6))
@@ -323,19 +182,179 @@ def plot_confusion_matrix(cm, labels, title):
     plt.xlabel('Predicted Label')
     plt.show()
 
-# Plot confusion matrices
-plot_confusion_matrix(simple_cnn_cm, train_dataset.labels, 'SimpleCNN Confusion Matrix')
-plot_confusion_matrix(resnet50_cm, train_dataset.labels, 'ResNet50 Confusion Matrix')
-plot_confusion_matrix(svm_cm, train_dataset.labels, 'SVM Confusion Matrix')
-plot_confusion_matrix(rf_cm, train_dataset.labels, 'Random Forest Confusion Matrix')
 
-# Save classification reports
-with open('classification_reports.txt', 'w') as f:
-    f.write("SimpleCNN Classification Report:\n")
-    f.write(simple_cnn_report)
-    f.write("\nResNet50 Classification Report:\n")
-    f.write(resnet50_report)
-    f.write("\nSVM Classification Report:\n")
-    f.write(svm_report)
-    f.write("\nRandom Forest Classification Report:\n")
-    f.write(rf_report)
+
+
+
+### Main Function ###
+def main():
+    # Check for command line arguments
+    if (len(sys.argv) != 2):
+        print("Usage: python classify.py <data.csv>")
+        sys.exit(1)
+
+    # Load your DataFrame
+    input_filename = sys.argv[1]
+    df = pd.read_csv(input_filename)  # Replace with your actual file path
+
+    # Display basic information
+    print(df.head())
+    print(df['label'].value_counts())
+
+    # Split the DataFrame into training and validation sets
+    train_df, val_df = train_test_split(df, test_size=0.2, stratify=df['label'], random_state=42) 
+
+    # Define transforms
+    train_transforms = transforms.Compose([
+        transforms.Resize((224, 224)),
+        transforms.RandomHorizontalFlip(),
+        transforms.ToTensor(),
+    ])
+
+    val_transforms = transforms.Compose([
+        transforms.Resize((224, 224)),
+        transforms.ToTensor(),
+    ])
+
+    # Create datasets
+    train_dataset = FoodDataset(train_df, transform=train_transforms)
+    val_dataset = FoodDataset(val_df, transform=val_transforms)
+
+    # Create dataloaders
+    train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True, num_workers=4)
+    val_loader = DataLoader(val_dataset, batch_size=32, shuffle=False, num_workers=4)
+
+    # Initialize the model, criterion, optimizer
+    num_classes = len(train_dataset.labels)
+    simple_cnn_model = SimpleCNN(num_classes=num_classes)
+
+    criterion = nn.CrossEntropyLoss()
+    optimizer = optim.Adam(simple_cnn_model.parameters(), lr=0.001)
+
+    # Train the SimpleCNN model
+    print("\nTraining SimpleCNN Model...", flush=True)
+    simple_cnn_model, train_losses, val_losses = train_model(simple_cnn_model, criterion, optimizer, train_loader, val_loader, num_epochs=10)
+
+    # Evaluate the SimpleCNN model
+    simple_cnn_acc, simple_cnn_report, simple_cnn_cm = evaluate_model(simple_cnn_model, val_loader, val_dataset)
+    print("SimpleCNN Validation Accuracy:", simple_cnn_acc)
+    print("Classification Report:")
+    print(simple_cnn_report, flush=True)
+
+    # Transfer Learning with ResNet50
+    resnet50_model = models.resnet50(weights=models.ResNet50_Weights.DEFAULT)
+
+    # Freeze the convolutional layers
+    for param in resnet50_model.parameters():
+        param.requires_grad = False
+
+    # Replace the final fully connected layer
+    num_features = resnet50_model.fc.in_features
+    resnet50_model.fc = nn.Linear(num_features, num_classes)
+
+    resnet50_model = resnet50_model.to(device)
+
+    # Only parameters of the final layer are being optimized
+    criterion = nn.CrossEntropyLoss()
+    optimizer = optim.Adam(resnet50_model.fc.parameters(), lr=0.001)
+
+    # Train the ResNet50 model
+    print("\nTraining ResNet50 Model with Transfer Learning...", flush=True)
+    resnet50_model, resnet50_train_losses, resnet50_val_losses = train_model(resnet50_model, criterion, optimizer, train_loader, val_loader, num_epochs=10)
+
+    # Evaluate the ResNet50 model
+    resnet50_acc, resnet50_report, resnet50_cm = evaluate_model(resnet50_model, val_loader, val_dataset)
+    print("ResNet50 Validation Accuracy:", resnet50_acc)
+    print("Classification Report:")
+    print(resnet50_report)
+
+    # Feature extractor model
+    feature_extractor = models.resnet50(pretrained=True)
+    # Remove the last classification layer
+    feature_extractor = nn.Sequential(*list(feature_extractor.children())[:-1])  # Remove last fc layer
+    feature_extractor = feature_extractor.to(device)
+
+    # Extract features from training and validation sets
+    print("\nExtracting features for SVM and Random Forest...", flush=True)
+    train_features, train_labels = extract_features(feature_extractor, train_loader)
+    val_features, val_labels = extract_features(feature_extractor, val_loader)
+
+    # SVM classifier
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.pipeline import make_pipeline
+
+    # Standardize features before feeding into SVM
+    svm_classifier = make_pipeline(StandardScaler(), SVC(kernel='linear', probability=True))
+
+    print("\nTraining SVM Classifier...", flush=True)
+    svm_classifier.fit(train_features, train_labels)
+
+    # Predict on validation set
+    svm_preds = svm_classifier.predict(val_features)
+
+    # Evaluate SVM
+    svm_acc = accuracy_score(val_labels, svm_preds)
+    svm_report = classification_report(val_labels, svm_preds, target_names=train_dataset.labels)
+    svm_cm = confusion_matrix(val_labels, svm_preds)
+    print("SVM Validation Accuracy:", svm_acc)
+    print("Classification Report:")
+    print(svm_report)
+
+    # Random Forest classifier
+    rf_classifier = RandomForestClassifier(n_estimators=100, random_state=42)
+
+    print("\nTraining Random Forest Classifier...", flush=True)
+    rf_classifier.fit(train_features, train_labels)
+
+    # Predict on validation set
+    rf_preds = rf_classifier.predict(val_features)
+
+    # Evaluate Random Forest
+    rf_acc = accuracy_score(val_labels, rf_preds)
+    rf_report = classification_report(val_labels, rf_preds, target_names=train_dataset.labels)
+    rf_cm = confusion_matrix(val_labels, rf_preds)
+    print("Random Forest Validation Accuracy:", rf_acc)
+    print("Classification Report:")
+    print(rf_report)
+
+    # Collect metrics
+    metrics = {
+        'Model': ['SimpleCNN', 'ResNet50', 'SVM', 'Random Forest'],
+        'Accuracy': [simple_cnn_acc, resnet50_acc, svm_acc, rf_acc],
+    }
+
+    metrics_df = pd.DataFrame(metrics)
+    print("\nModel Comparison:")
+    print(metrics_df)
+
+    # Plot the accuracies
+    plt.figure(figsize=(8,6))
+    sns.barplot(x='Model', y='Accuracy', data=metrics_df)
+    plt.title('Model Accuracies')
+    plt.ylabel('Accuracy')
+    plt.xlabel('Model')
+    plt.ylim(0, 1)
+    plt.show()
+
+    # Plot confusion matrices
+    plot_confusion_matrix(simple_cnn_cm, train_dataset.labels, 'SimpleCNN Confusion Matrix')
+    plot_confusion_matrix(resnet50_cm, train_dataset.labels, 'ResNet50 Confusion Matrix')
+    plot_confusion_matrix(svm_cm, train_dataset.labels, 'SVM Confusion Matrix')
+    plot_confusion_matrix(rf_cm, train_dataset.labels, 'Random Forest Confusion Matrix')
+
+    # Save classification reports
+    with open(os.path.basename(input_filename) + '_classification_reports.txt', 'w') as f:
+        f.write("SimpleCNN Classification Report:\n")
+        f.write(simple_cnn_report)
+        f.write("\nResNet50 Classification Report:\n")
+        f.write(resnet50_report)
+        f.write("\nSVM Classification Report:\n")
+        f.write(svm_report)
+        f.write("\nRandom Forest Classification Report:\n")
+        f.write(rf_report)
+
+    return 0
+
+
+if __name__ == "__main__":
+    exit(main())
